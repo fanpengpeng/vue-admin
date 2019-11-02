@@ -19,10 +19,7 @@ module.exports = {
       // 配置解析别名
       alias: {
         '@': path.resolve(__dirname, './src'),
-        'public': path.resolve(__dirname, './public'),
-        'api': path.resolve(__dirname, './src/api'),
-        'views': path.resolve(__dirname, './src/views'),
-        'components': path.resolve(__dirname, './src/components')
+        'public': path.resolve(__dirname, './public')
       }
     }
   },
@@ -53,12 +50,20 @@ module.exports = {
   // webpack-dev-server 相关配置
   devServer: {
     open: false, // 编译完成是否打开网页
-    host: '0.0.0.0', // 指定使用地址，默认localhost,0.0.0.0代表可以被外界访问
+    host: '0.0.0.0', // 指定使用地址，默认 localhost，0.0.0.0 代表可以被外界访问
     port: 8080, // 访问端口
     https: false, // 编译失败时刷新页面
     hot: true, // 开启热加载
     hotOnly: false,
-    proxy: null, // 设置代理
+    proxy: {
+      '/devAPI': {
+        target: 'http://www.web-jshtml.cn/productapi',
+        changeOrigin: true,
+        pathRewrite: {
+          '^/devAPI': ''
+        }
+      },
+    }, // 设置代理
     overlay: { // 全屏模式下是否显示脚本错误
       warnings: true,
       errors: true

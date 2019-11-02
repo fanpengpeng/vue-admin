@@ -14,8 +14,8 @@
       </ul>
       <div class="form-wrap">
         <el-form
-          ref="ruleForm"
-          :model="ruleForm"
+          ref="loginForm"
+          :model="loginForm"
           :rules="rules"
           status-icon
           size="medium"
@@ -25,7 +25,7 @@
             <el-input
               type="text"
               placeholder="请输入邮箱"
-              v-model="ruleForm.username"
+              v-model="loginForm.username"
             ></el-input>
           </el-form-item>
           <el-form-item prop="password" class="form-item">
@@ -34,7 +34,7 @@
               type="password"
               maxlength="20"
               placeholder="请输入密码"
-              v-model="ruleForm.password"
+              v-model="loginForm.password"
             ></el-input>
           </el-form-item>
           <el-form-item
@@ -47,7 +47,7 @@
               type="password"
               maxlength="20"
               placeholder="请再次输入密码"
-              v-model="ruleForm.rePassword"
+              v-model="loginForm.rePassword"
             ></el-input>
           </el-form-item>
           <el-form-item prop="code" class="form-item">
@@ -58,13 +58,19 @@
                   type="text"
                   maxlength="6"
                   placeholder="请输入验证码"
-                  v-model="ruleForm.code"
+                  v-model="loginForm.code"
                   @input.native="filterCharacter"
                 ></el-input>
               </el-col>
               <el-col :span="9">
-                <el-button type="success" class="block-btn" size="mini">
-                  获取验证码
+                <el-button
+                  type="success"
+                  class="block-btn"
+                  size="mini"
+                  :disabled="codeBtnStatus.status"
+                  @click="getCode()"
+                >
+                  {{ codeBtnStatus.text }}
                 </el-button>
               </el-col>
             </el-row>
@@ -73,9 +79,10 @@
             <el-button
               type="danger"
               class="btn-group block-btn"
-              @click="submitForm('ruleForm')"
+              :disabled="isPreservable"
+              @click="submitForm('loginForm')"
             >
-              登录
+              {{ model === "register" ? "注册" : "登录" }}
             </el-button>
           </el-form-item>
         </el-form>
@@ -85,6 +92,8 @@
 </template>
 
 <script>
+import { GetSMS, Register } from "@/api/login";
+import { ref, reactive, onMounted } from "@vue/composition-api";
 import {
   filterSpecilCharacter,
   validateEmail,
@@ -93,12 +102,13 @@ import {
 } from "@/utils/validate";
 export default {
   name: "login",
-  data() {
+  setup(props, { refs, root }) {
+    // 表单验证规则
     let validateUsername = (rule, value, callback) => {
       if (!value) {
-        return callback(new Error("请输入用户名"));
+        return callback(new Error("请输入邮箱"));
       } else if (validateEmail(value)) {
-        return callback(new Error("用户名格式不正确"));
+        return callback(new Error("邮箱格式不正确"));
       } else {
         callback();
       }
@@ -109,7 +119,7 @@ export default {
       } else if (validatePass(value)) {
         return callback(new Error("密码为6至20位字母和数字"));
       } else {
-        if (this.ruleForm.rePassword && value !== this.ruleForm.rePassword) {
+        if (loginForm.rePassword && value !== loginForm.rePassword) {
           return callback(new Error("当前密码与重复密码不一致"));
         }
         callback();
@@ -121,7 +131,7 @@ export default {
       } else if (validatePass(value)) {
         return callback(new Error("密码为6至20位字母和数字"));
       } else {
-        if (this.ruleForm.password && value !== this.ruleForm.password) {
+        if (loginForm.password && value !== loginForm.password) {
           return callback(new Error("两次输入密码不一致"));
         }
         callback();
@@ -136,65 +146,157 @@ export default {
         callback();
       }
     };
-    return {
-      model: "login",
-      menuTabs: [
+    // 数据初始化
+    const model = ref("login");
+    const timer = ref(null); // null 也是基本数据类型
+    const isPreservable = ref(true);
+    const menuTabs = reactive([
+      {
+        text: "登录",
+        current: true,
+        model: "login"
+      },
+      {
+        text: "注册",
+        current: false,
+        model: "register"
+      }
+    ]);
+    const loginForm = reactive({
+      username: "",
+      password: "",
+      rePassword: "",
+      code: ""
+    });
+    const codeBtnStatus = reactive({
+      status: false,
+      text: "获取验证码"
+    });
+    const rules = reactive({
+      username: [
         {
-          text: "登录",
-          current: true,
-          model: "login"
-        },
-        {
-          text: "注册",
-          current: false,
-          model: "register"
+          validator: validateUsername,
+          trigger: "blur"
         }
       ],
-      ruleForm: {
-        username: "",
-        password: "",
-        rePassword: "",
-        code: ""
-      },
-      rules: {
-        username: [
-          {
-            validator: validateUsername,
-            trigger: "blur"
-          }
-        ],
-        password: [
-          {
-            validator: validatePassword,
-            trigger: "blur"
-          }
-        ],
-        rePassword: [
-          {
-            validator: validateRePassword,
-            trigger: "blur"
-          }
-        ],
-        code: [
-          {
-            validator: validateCode,
-            trigger: "blur"
-          }
-        ]
-      }
-    };
-  },
-  methods: {
-    toggleTabs(data) {
-      this.menuTabs.forEach((item, index) => {
-        this.menuTabs[index].current = false;
+      password: [
+        {
+          validator: validatePassword,
+          trigger: "blur"
+        }
+      ],
+      rePassword: [
+        {
+          validator: validateRePassword,
+          trigger: "blur"
+        }
+      ],
+      code: [
+        {
+          validator: validateCode,
+          trigger: "blur"
+        }
+      ]
+    });
+    // 生命周期函数
+    onMounted(() => {
+      console.log(props);
+    });
+    // 声明函数
+    const toggleTabs = data => {
+      refs.loginForm.resetFields();
+      menuTabs.forEach((item, index) => {
+        menuTabs[index].current = false;
       });
       data.current = true;
-      this.model = data.model;
-    },
-    filterCharacter(event) {
-      this.ruleForm.code = filterSpecilCharacter(event.target.value);
-    }
+      model.value = data.model;
+      clearInterval(timer.value);
+    };
+    const getCode = () => {
+      if (!loginForm.username) {
+        root.$message.error("邮箱不能为空！");
+        return false;
+      }
+      if (validateEmail(loginForm.username)) {
+        root.$message.error("邮箱格式不正确！");
+        return false;
+      }
+      // 保证校验格式统一
+      // let flag = false;
+      // let validateFields =
+      //   model.value === "login"
+      //   ? ["username", "password"] : ["username", "password", "rePassword"];
+      // refs.loginForm.validateField(validateFields, errorMsg => {
+      //   if (errorMsg !== "") {
+      //     flag = true;
+      //   }
+      // });
+      // if (flag) {
+      //   return false;
+      // }
+      let requstParams = {
+        username: loginForm.username,
+        module: model.value
+      };
+      codeBtnStatus.status = true;
+      codeBtnStatus.text = "发送中...";
+      GetSMS(requstParams)
+        .then(res => {
+          root.$message.success(res.message);
+          isPreservable.value = false;
+          countDown(60);
+        })
+        .catch(res => {
+          console.log(res);
+        });
+    };
+    const submitForm = formName => {
+      refs[formName].validate(valid => {
+        if (valid) {
+          let requstParams = Object.assign({}, loginForm, {
+            module: model.value
+          });
+          Register(requstParams)
+            .then(res => {
+              root.$message.success(res.message);
+            })
+            .catch(res => {
+              console.log(res.message);
+            });
+        } else {
+          console.log("submit error");
+        }
+      });
+    };
+    const filterCharacter = event => {
+      loginForm.code = filterSpecilCharacter(event.target.value);
+    };
+    const countDown = number => {
+      timer.value = setInterval(() => {
+        if (number > 0) {
+          codeBtnStatus.text = `倒计时${number}秒`;
+          number--;
+        } else {
+          codeBtnStatus.status = false;
+          codeBtnStatus.text = "重新获取";
+          clearInterval(timer.value);
+        }
+      }, 1000);
+    };
+    // 将所有声明的数据及函数返回
+    return {
+      model,
+      isPreservable,
+      menuTabs,
+      loginForm,
+      codeBtnStatus,
+      rules,
+      toggleTabs,
+      getCode,
+      submitForm,
+      filterCharacter,
+      countDown
+    };
   }
 };
 </script>
