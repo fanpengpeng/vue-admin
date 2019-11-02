@@ -23,3 +23,11 @@ export function Register(data) {
     data
   });
 }
+
+export function Login(data) {
+  return service.request({
+    url: "/login/",
+    method: "post",
+    data
+  });
+}

@@ -92,7 +92,7 @@
 </template>
 
 <script>
-import { GetSMS, Register } from "@/api/login";
+import { GetSMS, Register, Login } from "@/api/login";
 import { ref, reactive, onMounted } from "@vue/composition-api";
 import {
   filterSpecilCharacter,
@@ -210,6 +210,9 @@ export default {
       });
       data.current = true;
       model.value = data.model;
+      // 重置验证码
+      codeBtnStatus.status = false;
+      codeBtnStatus.text = "获取验证码";
       clearInterval(timer.value);
     };
     const getCode = () => {
@@ -246,32 +249,57 @@ export default {
           isPreservable.value = false;
           countDown(60);
         })
-        .catch(res => {
-          console.log(res);
+        .catch(error => {
+          codeBtnStatus.status = false;
+          codeBtnStatus.text = "重新获取";
+          console.log(error);
         });
     };
     const submitForm = formName => {
       refs[formName].validate(valid => {
         if (valid) {
-          let requstParams = Object.assign({}, loginForm, {
-            module: model.value
-          });
-          Register(requstParams)
-            .then(res => {
-              root.$message.success(res.message);
-            })
-            .catch(res => {
-              console.log(res.message);
-            });
+          model.value === "login" ? login() : register();
         } else {
           console.log("submit error");
         }
       });
     };
+    const register = () => {
+      let requstParams = Object.assign({}, loginForm, {
+        module: model.value
+      });
+      // 重复密码未提交到后台
+      Register(requstParams)
+        .then(res => {
+          root.$message.success(res.message);
+          toggleTabs({
+            text: "登录",
+            current: true,
+            model: "login"
+          });
+        })
+        .catch(error => {
+          console.log(error.message);
+        });
+    };
+    const login = () => {
+      let requstParams = Object.assign({}, loginForm, {
+        module: model.value
+      });
+      Login(requstParams)
+        .then(res => {
+          root.$message.success(res.message);
+          // TODO: 缓存 token、路由跳转
+        })
+        .catch(error => {
+          console.log(error.message);
+        });
+    };
     const filterCharacter = event => {
       loginForm.code = filterSpecilCharacter(event.target.value);
     };
     const countDown = number => {
+      timer.value && clearInterval(timer.value);
       timer.value = setInterval(() => {
         if (number > 0) {
           codeBtnStatus.text = `倒计时${number}秒`;
@@ -294,6 +322,8 @@ export default {
       toggleTabs,
       getCode,
       submitForm,
+      register,
+      login,
       filterCharacter,
       countDown
     };
