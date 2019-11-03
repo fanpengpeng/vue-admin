@@ -9,8 +9,13 @@ import compositionAPI from "@vue/composition-api";
 import ElementUI from "element-ui";
 import "element-ui/lib/theme-chalk/index.css";
 
+// sha1 加密
+import sha1 from "js-sha1";
+
 Vue.use(compositionAPI);
 Vue.use(ElementUI);
+
+Vue.prototype.$encrypt = sha1;
 
 Vue.config.productionTip = false;
 

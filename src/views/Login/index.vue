@@ -204,15 +204,19 @@ export default {
     });
     // 声明函数
     const toggleTabs = data => {
-      refs.loginForm.resetFields();
       menuTabs.forEach((item, index) => {
         menuTabs[index].current = false;
       });
       data.current = true;
       model.value = data.model;
       // 重置验证码
-      codeBtnStatus.status = false;
-      codeBtnStatus.text = "获取验证码";
+      updateCodeBtnStatus({
+        status: false,
+        text: "获取验证码"
+      });
+      // 重置表单
+      refs.loginForm.resetFields();
+      // 清除计时器
       clearInterval(timer.value);
     };
     const getCode = () => {
@@ -224,7 +228,7 @@ export default {
         root.$message.error("邮箱格式不正确！");
         return false;
       }
-      // 保证校验格式统一
+      // 保证校验风格统一
       // let flag = false;
       // let validateFields =
       //   model.value === "login"
@@ -237,12 +241,14 @@ export default {
       // if (flag) {
       //   return false;
       // }
+      updateCodeBtnStatus({
+        status: true,
+        text: "发送中..."
+      });
       let requstParams = {
         username: loginForm.username,
         module: model.value
       };
-      codeBtnStatus.status = true;
-      codeBtnStatus.text = "发送中...";
       GetSMS(requstParams)
         .then(res => {
           root.$message.success(res.message);
@@ -250,23 +256,24 @@ export default {
           countDown(60);
         })
         .catch(error => {
-          codeBtnStatus.status = false;
-          codeBtnStatus.text = "重新获取";
           console.log(error);
+          updateCodeBtnStatus({
+            status: false,
+            text: "重新获取"
+          });
         });
     };
     const submitForm = formName => {
       refs[formName].validate(valid => {
         if (valid) {
           model.value === "login" ? login() : register();
-        } else {
-          console.log("submit error");
         }
       });
     };
     const register = () => {
       let requstParams = Object.assign({}, loginForm, {
-        module: model.value
+        module: model.value,
+        password: root.$encrypt(loginForm.password)
       });
       // 重复密码未提交到后台
       Register(requstParams)
@@ -279,12 +286,14 @@ export default {
           });
         })
         .catch(error => {
+          // 重置表单 || 清除验证码 || 清除计时器
           console.log(error.message);
         });
     };
     const login = () => {
       let requstParams = Object.assign({}, loginForm, {
-        module: model.value
+        module: model.value,
+        password: root.$encrypt(loginForm.password)
       });
       Login(requstParams)
         .then(res => {
@@ -292,6 +301,7 @@ export default {
           // TODO: 缓存 token、路由跳转
         })
         .catch(error => {
+          // 重置表单 || 清除验证码 || 清除计时器
           console.log(error.message);
         });
     };
@@ -305,11 +315,17 @@ export default {
           codeBtnStatus.text = `倒计时${number}秒`;
           number--;
         } else {
-          codeBtnStatus.status = false;
-          codeBtnStatus.text = "重新获取";
+          updateCodeBtnStatus({
+            status: false,
+            text: "重新获取"
+          });
           clearInterval(timer.value);
         }
       }, 1000);
+    };
+    const updateCodeBtnStatus = params => {
+      codeBtnStatus.status = params.status;
+      codeBtnStatus.text = params.text;
     };
     // 将所有声明的数据及函数返回
     return {
