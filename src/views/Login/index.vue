@@ -101,7 +101,7 @@ import {
   validateCode as validateVerification
 } from "@/utils/validate";
 export default {
-  name: "login",
+  name: "Login",
   setup(props, { refs, root }) {
     // 表单验证规则
     let validateUsername = (rule, value, callback) => {
@@ -298,7 +298,9 @@ export default {
       Login(requstParams)
         .then(res => {
           root.$message.success(res.message);
-          // TODO: 缓存 token、路由跳转
+          root.$router.push({
+            name: "Main"
+          });
         })
         .catch(error => {
           // 重置表单 || 清除验证码 || 清除计时器
